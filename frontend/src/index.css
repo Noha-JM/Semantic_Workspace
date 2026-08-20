@@ -1,0 +1,174 @@
+:root {
+  --bg-app: #f0f2f5;
+  --bg-surface: #ffffff;
+  --bg-sidebar: #f8fafc;
+  --bg-card: #ffffff;
+  --border-color: #e2e8f0;
+  --border-subtle: #cbd5e1;
+
+  --text-main: #0f172a;
+  --text-muted: #64748b;
+  --text-subtle: #94a3b8;
+
+  --primary: #2563eb;
+  --primary-hover: #1d4ed8;
+  --primary-light: #eff6ff;
+
+  --accent-teal: #0d9488;
+  --accent-gold: #d97706;
+  --accent-purple: #9333ea;
+  --accent-green: #16a34a;
+  --accent-rose: #e11d48;
+
+  --radius-sm: 6px;
+  --radius-md: 10px;
+  --radius-lg: 14px;
+
+  --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.06);
+  --shadow-md: 0 4px 12px rgba(0, 0, 0, 0.08);
+  --shadow-lg: 0 8px 28px rgba(0, 0, 0, 0.12);
+
+  --font-heading: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-body: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-code: 'JetBrains Mono', monospace;
+}
+
+*, *::before, *::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html, body, #root {
+  height: 100%;
+  width: 100%;
+  overflow: hidden;
+}
+
+body {
+  background-color: var(--bg-app);
+  color: var(--text-main);
+  font-family: var(--font-body);
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-heading);
+  line-height: 1.3;
+}
+
+/* ---- Scrollbars ---- */
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 4px; }
+::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+/* ---- Card Surfaces ---- */
+.ui-card {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--shadow-sm);
+  transition: box-shadow 0.2s ease;
+}
+.ui-card:hover {
+  box-shadow: var(--shadow-md);
+}
+
+/* ---- Node Themes ---- */
+.node-blue   { background: #f0f7ff; border: 1px solid #bfdbfe; border-left: 4px solid #3b82f6; }
+.node-teal   { background: #f0fdfa; border: 1px solid #99f6e4; border-left: 4px solid #14b8a6; }
+.node-gold   { background: #fffbeb; border: 1px solid #fde68a; border-left: 4px solid #f59e0b; }
+.node-purple { background: #faf5ff; border: 1px solid #e9d5ff; border-left: 4px solid #a855f7; }
+.node-green  { background: #f0fdf4; border: 1px solid #bbf7d0; border-left: 4px solid #22c55e; }
+
+/* ---- Tag Pills ---- */
+.tag-pill {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 2px 8px;
+  border-radius: 20px;
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  white-space: nowrap;
+}
+
+/* Priority Badges */
+.priority-high   { background: #ffe4e6; color: #be123c; }
+.priority-medium { background: #fef3c7; color: #b45309; }
+.priority-low    { background: #dcfce7; color: #15803d; }
+
+/* ---- Buttons ---- */
+.btn-blue {
+  background: var(--primary);
+  color: #fff;
+  border: none;
+  border-radius: var(--radius-md);
+  padding: 8px 16px;
+  font-weight: 600;
+  font-size: 0.86rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: background 0.15s ease, box-shadow 0.15s ease;
+}
+.btn-blue:hover { background: var(--primary-hover); box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3); }
+.btn-blue:disabled { opacity: 0.6; cursor: not-allowed; }
+
+.btn-subtle {
+  background: #f1f5f9;
+  color: #334155;
+  border: 1px solid var(--border-color);
+  border-radius: var(--radius-md);
+  padding: 6px 12px;
+  font-weight: 500;
+  font-size: 0.82rem;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.15s ease;
+}
+.btn-subtle:hover { background: #e2e8f0; color: #0f172a; }
+
+/* ---- Stat Counter ---- */
+.stat-value {
+  font-size: 1.15rem;
+  font-weight: 800;
+  color: var(--text-main);
+  display: block;
+  line-height: 1.2;
+}
+.stat-label {
+  font-size: 0.7rem;
+  font-weight: 500;
+  color: var(--text-subtle);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+
+/* ---- Fade-in Animation ---- */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes pulse-glow {
+  0%, 100% { opacity: 1; }
+  50%       { opacity: 0.55; }
+}
+.pulse-glow { animation: pulse-glow 1.2s ease-in-out infinite; }
+
+/* ---- Live badge dot ---- */
+.live-dot {
+  width: 7px;
+  height: 7px;
+  background: #22c55e;
+  border-radius: 50%;
+  box-shadow: 0 0 0 2px #bbf7d0;
+  display: inline-block;
+}
