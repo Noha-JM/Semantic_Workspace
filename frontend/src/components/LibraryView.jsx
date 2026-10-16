@@ -1,5 +1,5 @@
 import React from 'react';
-import { Database, Layers, Trash2, BookOpen, RefreshCw, CheckCircle2, Loader2, XCircle, Upload } from 'lucide-react';
+import { Database, Trash2, BookOpen, RefreshCw, CheckCircle2, Loader2, XCircle, Upload, PlusCircle } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '../api';
 
@@ -10,7 +10,7 @@ const STATUS_META = {
   failed:  { label: 'Failed', color: '#ef4444', icon: XCircle },
 };
 
-export default function LibraryView({ papers, onInspectPaper, onDeletePaper, onRefresh }) {
+export default function LibraryView({ papers, onInspectPaper, onDeletePaper, onRefresh, isSelectedForSynthesis, onToggleSynthesis }) {
 
   const handleUploadPdf = async (paper) => {
     const input = document.createElement('input');
@@ -141,6 +141,16 @@ export default function LibraryView({ papers, onInspectPaper, onDeletePaper, onR
                         Retry
                       </button>
                     )}
+                    <button
+                      className="btn-secondary"
+                      onClick={() => onToggleSynthesis(paper)}
+                      aria-pressed={isSelectedForSynthesis?.(paper) || false}
+                      title={isSelectedForSynthesis?.(paper) ? 'Remove from synthesis' : 'Add to synthesis'}
+                      style={{ padding: '4px 10px', fontSize: '0.75rem' }}
+                    >
+                      <PlusCircle size={12} />
+                      {isSelectedForSynthesis?.(paper) ? 'Selected' : 'Compare'}
+                    </button>
                     <button
                       className="btn-secondary"
                       onClick={() => onInspectPaper(paper)}

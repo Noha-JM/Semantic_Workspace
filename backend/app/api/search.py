@@ -55,10 +55,18 @@ async def import_paper(paper: ExternalPaper, db: Session = Depends(get_db)):
         db.rollback()
         raise HTTPException(status_code=500, detail="Paper import failed. Check server logs.")
 
-    # Queue background processing when a source PDF is available; otherwise
-    # the paper is metadata-only and is finalized immediately.
+    # Queue background processing when a source PDF is available. OpenAlex
+    # imports should also be queued when their search result has no direct
+    # pdf_url: the worker can look up alternate open locations and the cached
+    # OpenAlex PDF using the persisted OpenAlex work ID. Only papers with no
+    # known PDF-resolution path are metadata-only.
     job_id = None
-    if paper.pdf_url:
+    has_openalex_lookup = (
+        (paper.source or "").strip().lower() == "openalex"
+        and bool(paper.source_id)
+    )
+    processing_queued = bool(paper.pdf_url or has_openalex_lookup)
+    if processing_queued:
         from sqlalchemy import text
 
         from app.services.redis_queue import paper_queue
@@ -116,6 +124,6 @@ async def import_paper(paper: ExternalPaper, db: Session = Depends(get_db)):
         "message": "Paper imported successfully",
         "paper_id": stored_paper.id,
         "title": stored_paper.title,
-        "ingestion": "queued" if paper.pdf_url else "metadata_only",
+        "ingestion": "queued" if processing_queued else "metadata_only",
         "job_id": job_id,
     }

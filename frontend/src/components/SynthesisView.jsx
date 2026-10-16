@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Cpu, Sparkles, Trash2, CheckCircle2, FileText, ArrowRight } from 'lucide-react';
+import { Cpu, Sparkles, Trash2, FileText, ArrowRight, ShieldCheck } from 'lucide-react';
 import axios from 'axios';
 import { apiUrl } from '../api';
 
@@ -23,7 +23,10 @@ export default function SynthesisView({ selectedPapers, onRemovePaper, onInspect
       setSynthesisResult(res.data);
     } catch (err) {
       console.error("Synthesis error:", err);
-      alert("Failed to synthesize selected papers. Ensure backend is running.");
+      const detail = err.response?.data?.detail;
+      alert(detail || (err.response
+        ? `Synthesis failed (HTTP ${err.response.status}). Check the backend log for details.`
+        : 'Could not reach the backend. Check that it is running and try again.'));
     } finally {
       setIsSynthesizing(false);
     }
@@ -35,7 +38,7 @@ export default function SynthesisView({ selectedPapers, onRemovePaper, onInspect
         <Cpu size={48} style={{ opacity: 0.3, marginBottom: '16px' }} />
         <h3>Synthesis Matrix Empty</h3>
         <p style={{ fontSize: '0.9rem', marginTop: '8px' }}>
-          Select "Compare" on paper cards in the Search Explorer to build a side-by-side comparison matrix.
+          Select "Compare" on papers in Literature Search to build a side-by-side comparison matrix.
         </p>
       </div>
     );
@@ -73,9 +76,43 @@ export default function SynthesisView({ selectedPapers, onRemovePaper, onInspect
             <FileText size={18} color="var(--accent-purple)" />
             Executive Synthesis Overview
           </h3>
-          <p style={{ fontSize: '0.92rem', color: '#334155', marginBottom: '14px', lineHeight: 1.6 }}>
-            {synthesisResult.executive_summary}
-          </p>
+          <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap', marginBottom: '16px' }}>
+            <span style={{ fontSize: '0.75rem', padding: '4px 9px', borderRadius: '999px', background: synthesisResult.grounded ? '#ecfdf3' : '#fffaeb', color: synthesisResult.grounded ? '#067647' : '#b54708' }}>
+              <ShieldCheck size={13} style={{ verticalAlign: 'middle', marginRight: 4 }} />
+              {synthesisResult.grounded ? 'Evidence grounded' : 'Limited evidence'}
+            </span>
+            {synthesisResult.evidence_stats && (
+              <span style={{ fontSize: '0.75rem', padding: '4px 9px', borderRadius: '999px', background: '#f1f5f9', color: '#475569' }}>
+                {synthesisResult.evidence_stats.chunks_used} excerpts across {synthesisResult.evidence_stats.papers} papers
+              </span>
+            )}
+            {synthesisResult.generation_mode === 'extractive' && (
+              <span style={{ fontSize: '0.75rem', padding: '4px 9px', borderRadius: '999px', background: '#f1f5f9', color: '#475569' }}>Extractive mode</span>
+            )}
+          </div>
+          <div style={{ fontSize: '0.92rem', color: '#334155', marginBottom: '18px', lineHeight: 1.7 }}>
+            {synthesisResult.executive_summary.split('\n').map((line, i) => {
+              const heading = line.match(/^#{1,3}\s+(.+)/);
+              if (heading) return <h4 key={i} style={{ fontSize: '0.98rem', color: 'var(--text-main)', margin: '18px 0 6px' }}>{heading[1]}</h4>;
+              if (!line.trim()) return <div key={i} style={{ height: 5 }} />;
+              if (/^[-•]\s/.test(line)) return <div key={i} style={{ paddingLeft: 16, margin: '4px 0' }}>• {line.replace(/^[-•]\s/, '')}</div>;
+              return <p key={i} style={{ margin: '6px 0' }}>{line}</p>;
+            })}
+          </div>
+
+          {synthesisResult.citations?.length > 0 && (
+            <details style={{ margin: '12px 0 18px', color: 'var(--text-muted)', fontSize: '0.82rem' }}>
+              <summary style={{ cursor: 'pointer', fontWeight: 600 }}>Evidence cited ({synthesisResult.citations.length})</summary>
+              <ol style={{ paddingLeft: 22 }}>
+                {synthesisResult.citations.map((citation) => (
+                  <li key={`${citation.paper_id}-${citation.chunk_id}`} style={{ marginTop: 8 }}>
+                    <strong>{citation.marker} {citation.title}</strong>
+                    <div>{citation.snippet}</div>
+                  </li>
+                ))}
+              </ol>
+            </details>
+          )}
 
           <h4 style={{ fontSize: '0.85rem', fontWeight: 600, color: 'var(--text-muted)', marginBottom: '8px', textTransform: 'uppercase' }}>
             Key Comparative Insights:
@@ -102,8 +139,10 @@ export default function SynthesisView({ selectedPapers, onRemovePaper, onInspect
                 <button
                   onClick={() => onRemovePaper(paper)}
                   style={{ background: 'none', border: 'none', color: 'var(--text-subtle)', cursor: 'pointer', padding: '4px' }}
-                  onMouseOver={(e) => e.target.style.color = '#ef4444'}
-                  onMouseOut={(e) => e.target.style.color = 'var(--text-subtle)'}
+          aria-label={`Remove ${paper.title} from synthesis`}
+          title="Remove from synthesis"
+          onMouseOver={(e) => e.currentTarget.style.color = '#ef4444'}
+          onMouseOut={(e) => e.currentTarget.style.color = 'var(--text-subtle)'}
                 >
                   <Trash2 size={16} />
                 </button>

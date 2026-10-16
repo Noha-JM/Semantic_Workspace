@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends
+import logging
+
+from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
 from sqlalchemy import text
@@ -9,6 +11,7 @@ from app.services.synthesis import synthesize_papers
 
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
 
 
 class AskRequest(BaseModel):
@@ -49,12 +52,12 @@ def synthesize(req: SynthesizeRequest, db: Session = Depends(get_db)):
     disagreements / gaps) with citations."""
     try:
         return synthesize_papers(db, req.paper_ids, req.focus_query)
-    except Exception:
-        return {
-            "executive_summary": "Synthesis failed. Check server logs.",
-            "key_insights": [],
-            "citations": [],
-        }
+    except Exception as exc:
+        logger.exception("Synthesis request failed for paper IDs %s", req.paper_ids)
+        raise HTTPException(
+            status_code=500,
+            detail="Could not synthesize the selected papers. Check the backend log for details.",
+        ) from exc
 
 
 class ParseWorkspaceRequest(BaseModel):

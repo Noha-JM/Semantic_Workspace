@@ -1,10 +1,32 @@
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy import text
 from sqlalchemy.orm import Session
+import logging
 
 from app.db.databases import get_db
 
 router = APIRouter()
+logger = logging.getLogger(__name__)
+
+
+@router.get("/health/live")
+def liveness():
+    """Process-level liveness probe; external dependency failures are not fatal."""
+    return {"status": "alive"}
+
+
+@router.get("/health/ready")
+def readiness(db: Session = Depends(get_db)):
+    """Only receive traffic when PostgreSQL and the queue are reachable."""
+    try:
+        db.execute(text("SELECT 1"))
+        from app.services.redis_queue import redis_connection
+
+        redis_connection.ping()
+    except Exception as exc:
+        db.rollback()
+        raise HTTPException(status_code=503, detail="critical dependency unavailable") from exc
+    return {"status": "ready"}
 
 
 def _check_redis() -> dict:
@@ -87,15 +109,21 @@ def _check_neo4j() -> dict:
 @router.get("/health")
 def health(db: Session = Depends(get_db)):
     """Aggregate health across all infrastructure components."""
-    db_ok = True
+    db_ok = False
+    db_error = None
     paper_count = chunk_count = 0
     queue_depth = 0
     try:
+        # Probe connectivity independently so a missing/unmigrated application
+        # table does not report a healthy PostgreSQL server as offline.
+        db.execute(text("SELECT 1"))
+        db_ok = True
         paper_count = db.execute(text("SELECT COUNT(*) FROM papers")).scalar() or 0
         chunk_count = db.execute(text("SELECT COUNT(*) FROM chunks")).scalar() or 0
-        db.execute(text("SELECT 1"))
-    except Exception:
-        db_ok = False
+    except Exception as exc:
+        db_error = type(exc).__name__
+        logger.exception("PostgreSQL health check failed")
+        db.rollback()
 
     try:
         from app.services.redis_queue import redis_connection
@@ -109,6 +137,7 @@ def health(db: Session = Depends(get_db)):
             "status": "ok" if db_ok else "unavailable",
             "total_papers": paper_count,
             "total_vector_chunks": chunk_count,
+            **({"error": db_error} if db_error else {}),
         },
         "redis": _check_redis(),
         "minio": _check_minio(),

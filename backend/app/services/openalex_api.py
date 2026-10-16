@@ -7,6 +7,12 @@ from app.schemas.external_paper import ExternalPaper, ExternalAuthor
 OPENALEX_URL = "https://api.openalex.org/works"
 
 
+def _openalex_headers() -> dict[str, str]:
+    """Use bearer auth so HTTP client logs never include the API key in URLs."""
+    api_key = get_settings().openalex_api_key
+    return {"Authorization": f"Bearer {api_key}"} if api_key else {}
+
+
 # =========================================================
 # RECONSTRUCT ABSTRACT
 # =========================================================
@@ -64,14 +70,11 @@ def normalize_openalex_work(work) -> ExternalPaper:
 
     pdf_url = None
 
-    best_oa_location = work.get(
-        "best_oa_location"
-    )
-
-    if best_oa_location:
-        pdf_url = best_oa_location.get(
-            "pdf_url"
-        )
+    for location in _ordered_locations(work):
+        candidate = location.get("pdf_url")
+        if candidate:
+            pdf_url = candidate
+            break
 
     # ---------------------------------------------------------
     # NORMALIZED PAPER
@@ -109,6 +112,47 @@ def normalize_openalex_work(work) -> ExternalPaper:
     )
 
 
+def _ordered_locations(work: dict) -> list[dict]:
+    """Return OpenAlex's open locations with preferred copies first."""
+    ordered = []
+    for location in (
+        work.get("best_oa_location"),
+        work.get("primary_location"),
+        *(work.get("locations") or []),
+    ):
+        if location and location not in ordered:
+            ordered.append(location)
+    return ordered
+
+
+def get_openalex_pdf_urls(openalex_id: str) -> list[str]:
+    """Fetch all direct PDF URLs OpenAlex lists for a work, best copy first."""
+    work_id = openalex_id.rstrip("/").split("/")[-1]
+    if not work_id:
+        return []
+
+    with httpx.Client(timeout=30.0) as client:
+        response = client.get(
+            f"{OPENALEX_URL}/{work_id}", headers=_openalex_headers()
+        )
+        response.raise_for_status()
+        work = response.json()
+
+    urls = []
+    for location in _ordered_locations(work):
+        url = location.get("pdf_url")
+        if url and url not in urls:
+            urls.append(url)
+
+    # OpenAlex's cached full-text copy is especially useful when the publisher
+    # URL is blocked or unstable. Downloading it requires the configured API
+    # key; the worker adds that key as an Authorization header.
+    content_pdf = (work.get("content_urls") or {}).get("pdf")
+    if content_pdf and content_pdf not in urls:
+        urls.append(content_pdf)
+    return urls
+
+
 # =========================================================
 # SEARCH OPENALEX
 # =========================================================
@@ -122,10 +166,6 @@ async def search_openalex(
         "search": query,
         "per-page": per_page,
     }
-    api_key = get_settings().openalex_api_key
-    if api_key:
-        params["api_key"] = api_key
-
     async with httpx.AsyncClient(
         timeout=30.0
     ) as client:
@@ -133,6 +173,7 @@ async def search_openalex(
         response = await client.get(
             OPENALEX_URL,
             params=params,
+            headers=_openalex_headers(),
         )
 
         response.raise_for_status()
@@ -179,11 +220,6 @@ async def get_openalex_work(
 
     url = f"{OPENALEX_URL}/{work_id}"
 
-    params = {}
-    api_key = get_settings().openalex_api_key
-    if api_key:
-        params["api_key"] = api_key
-
     # ---------------------------------------------------------
     # Request
     # ---------------------------------------------------------
@@ -194,7 +230,7 @@ async def get_openalex_work(
 
         response = await client.get(
             url,
-            params=params,
+            headers=_openalex_headers(),
         )
 
         response.raise_for_status()

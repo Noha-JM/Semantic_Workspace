@@ -1,0 +1,20 @@
+# Apply after PostgreSQL is Ready and before app.yaml. Run once per release.
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: db-migrate
+  namespace: srw
+spec:
+  backoffLimit: 4
+  template:
+    spec:
+      restartPolicy: OnFailure
+      containers:
+        - name: migrate
+          image: semantic-workspace-backend:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "alembic upgrade head || python create.py"]
+          envFrom:
+            - configMapRef: {name: srw-config}
+          env:
+            - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: srw-secrets, key: POSTGRES_PASSWORD}}}

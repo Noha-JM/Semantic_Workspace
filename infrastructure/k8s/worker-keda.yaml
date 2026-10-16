@@ -1,0 +1,19 @@
+# Queue-depth autoscaling. Install KEDA before applying this file.
+apiVersion: keda.sh/v1alpha1
+kind: ScaledObject
+metadata:
+  name: worker-queue
+  namespace: srw
+spec:
+  scaleTargetRef:
+    name: worker
+  minReplicaCount: 1
+  maxReplicaCount: 8
+  pollingInterval: 15
+  cooldownPeriod: 60
+  triggers:
+    - type: redis
+      metadata:
+        address: redis.srw.svc.cluster.local:6379
+        listName: rq:queue:paper_tasks
+        listLength: "1"

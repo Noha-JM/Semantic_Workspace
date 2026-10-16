@@ -538,7 +538,7 @@ export default function App() {
           {(activeTab === 'compare' || activeTab === 'synthesis') && (
             <div style={{ flex: 1, overflowY: 'auto' }}>
               <SynthesisView
-                selectedPapers={selectedSynthesisPapers.length > 0 ? selectedSynthesisPapers : libraryPapers.slice(0, 3)}
+                selectedPapers={selectedSynthesisPapers}
                 onRemovePaper={handleToggleSynthesis}
                 onInspectPaper={handleInspectPaper}
               />
@@ -559,6 +559,8 @@ export default function App() {
                 papers={libraryPapers}
                 onInspectPaper={handleInspectPaper}
                 onDeletePaper={handleDeleteLibraryPaper}
+                isSelectedForSynthesis={(paper) => selectedSynthesisPapers.some(p => paperKey(p) === paperKey(paper))}
+                onToggleSynthesis={handleToggleSynthesis}
                 onRefresh={fetchLibrary}
               />
             </div>

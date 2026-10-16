@@ -1,0 +1,36 @@
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: workspace-backup
+  namespace: srw
+spec:
+  schedule: "0 2 * * *"
+  timeZone: Etc/UTC
+  concurrencyPolicy: Forbid
+  startingDeadlineSeconds: 3600
+  successfulJobsHistoryLimit: 3
+  failedJobsHistoryLimit: 3
+  suspend: true # Enable only after Azure Blob Storage is provisioned and the secret is installed.
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      activeDeadlineSeconds: 14400
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: backup
+              image: srwresearch20261015.azurecr.io/semantic-workspace-backup:dr-20261016
+              imagePullPolicy: IfNotPresent
+              envFrom:
+                - configMapRef: {name: srw-config}
+              env:
+                - {name: POSTGRES_PASSWORD, valueFrom: {secretKeyRef: {name: srw-secrets, key: POSTGRES_PASSWORD}}}
+                - {name: MINIO_ACCESS_KEY, valueFrom: {secretKeyRef: {name: srw-secrets, key: MINIO_ACCESS_KEY}}}
+                - {name: MINIO_SECRET_KEY, valueFrom: {secretKeyRef: {name: srw-secrets, key: MINIO_SECRET_KEY}}}
+                - {name: AZURE_STORAGE_CONNECTION_STRING, valueFrom: {secretKeyRef: {name: srw-backup, key: AZURE_STORAGE_CONNECTION_STRING}}}
+                - {name: AZURE_STORAGE_CONTAINER, value: srw-backups}
+                - {name: BACKUP_RETENTION_DAYS, value: "7"}
+              resources:
+                requests: {cpu: 100m, memory: 256Mi}
+                limits: {cpu: 500m, memory: 1Gi}

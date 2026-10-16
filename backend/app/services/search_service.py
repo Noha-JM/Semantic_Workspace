@@ -8,7 +8,7 @@ from __future__ import annotations
 
 from typing import Any
 
-from sqlalchemy import text
+from sqlalchemy import bindparam, text
 from sqlalchemy.orm import Session
 
 from app.services.embeddings import get_embedding_service
@@ -153,5 +153,23 @@ def run_search(
                 "provenance": r.get("provenance"),
             }
         )
+
+    # Search retrieval returns chunk metadata, not the paper's author
+    # relationships. Load authors in one query so result cards can display
+    # the names already stored during OpenAlex/CORE import.
+    if papers:
+        author_rows = db.execute(
+            text(
+                "SELECT pa.paper_id, a.name "
+                "FROM paper_authors pa JOIN authors a ON a.id=pa.author_id "
+                "WHERE pa.paper_id IN :paper_ids "
+                "ORDER BY pa.paper_id, pa.author_order"
+            ).bindparams(bindparam("paper_ids", expanding=True)),
+            {"paper_ids": list(papers)},
+        ).fetchall()
+        for paper in papers.values():
+            paper["authors"] = []
+        for row in author_rows:
+            papers[row.paper_id]["authors"].append({"name": row.name})
 
     return {"results": list(papers.values()), "mode": mode, "query": q, "chunks": results}

@@ -256,9 +256,15 @@ def full_graph_snapshot(limit: int = 200) -> dict[str, Any]:
     )
     edges = run_query(
         """
-        MATCH (a:Paper)-[r:CITES|AUTHORED]-(b:Paper)
-        RETURN DISTINCT a.pg_id AS source, b.pg_id AS target,
-               CASE WHEN type(r) = 'CITES' THEN 'CITES' ELSE 'AUTHORED' END AS type
+        CALL {
+            MATCH (a:Paper)-[:CITES]->(b:Paper)
+            RETURN a.pg_id AS source, b.pg_id AS target, 'CITES' AS type
+            UNION
+            MATCH (a:Paper)-[:AUTHORED]-(author:Author)-[:AUTHORED]-(b:Paper)
+            WHERE a.pg_id < b.pg_id
+            RETURN a.pg_id AS source, b.pg_id AS target, 'AUTHORED' AS type
+        }
+        RETURN DISTINCT source, target, type
         LIMIT $limit
         """,
         {"limit": limit * 3},

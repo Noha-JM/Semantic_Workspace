@@ -78,6 +78,9 @@ def get_cors_origins() -> list[str]:
 def database_url() -> str:
     s = get_settings()
     return (
-        f"postgresql://{s.postgres_user}:{s.postgres_password}"
+        # Pin SQLAlchemy to the driver installed by requirements.txt. Without
+        # an explicit driver SQLAlchemy 2.1 may select psycopg (v3), which is
+        # not installed in this project image (it uses psycopg2-binary).
+        f"postgresql+psycopg2://{s.postgres_user}:{s.postgres_password}"
         f"@{s.postgres_host}:{s.postgres_port}/{s.postgres_db}"
     )
